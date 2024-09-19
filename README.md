@@ -53,7 +53,7 @@ Define specific roles to guide the behavior of the GROQ API, enabling more contr
 | `groqConfig` | Reference to the GROQ configuration node containing the API Key.    | Config | **Required**     |
 | `model`      | The model to use for the GROQ API (e.g., `llama3-8b-8192`).        | String | `llama3-8b-8192` |
 | `temperature`| Controls the randomness of the output. Range: 0.01 to 2.           | Number | `1`              |
-| `max_token`  | Maximum number of tokens in the response. Range: 1 to 8192.        | Number | `100`            |
+| `max_token`  | Maximum number of tokens in the response. Range: 1 to 8192.        | Number | `1024`            |
 | `system`     | (Optional) Defines the system role for the conversation.           | String | `""`             |
 | `user`       | (Optional) Defines the user message to be sent to the API.          | String | `""`             |
 
