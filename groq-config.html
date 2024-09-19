@@ -1,0 +1,74 @@
+<!-- Node Registration Script -->
+<script type="text/javascript">
+    // Register the 'groq-config' node type with Node-RED
+    RED.nodes.registerType('groq-config', {
+        category: 'config', // Place the node under the 'config' category in the palette
+        color: '#a6bbcf', // Set the color of the node in the palette
+        defaults: {
+            name: { value: "" } // Define the 'name' property with a default empty string
+        },
+        credentials: {
+            apiKey: { type: "password" } // Define 'apiKey' as a password type for secure storage
+        },
+        icon: "file.png", // Set the icon for the node in the palette
+        label: function() {
+            // Set the label of the node to its name or default to "groq-config"
+            return this.name || "groq-config";
+        }
+    });
+</script>
+
+<!-- Node Configuration Template -->
+<script type="text/x-red" data-template-name="groq-config">
+    <div class="form-row">
+        <!-- Name Input Field -->
+        <label for="node-config-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-config-input-name" placeholder="Configuration Name" data-name="name">
+    </div>
+    <div class="form-row">
+        <!-- API Key Input Field -->
+        <label for="node-config-input-apiKey"><i class="fa fa-key"></i> API Key</label>
+        <input type="password" id="node-config-input-apiKey" placeholder="Your GROQ API Key" data-name="apiKey">
+    </div>
+</script>
+
+<!-- Node Help Text Template -->
+<script type="text/x-red" data-help-name="groq-config">
+    <p>Configure the GROQ API key securely.</p>
+</script>
+
+<!-- Styles for the Configuration Dialog -->
+<style>
+    .form-row {
+        margin-bottom: 10px; /* Space between form rows */
+    }
+
+    .form-row label {
+        display: block; /* Make labels block elements */
+        margin-bottom: 5px; /* Space below labels */
+    }
+
+    .form-row input[type="text"],
+    .form-row input[type="number"],
+    .form-row input[type="password"] {
+        width: 100%; /* Full width inputs */
+        padding: 5px; /* Padding inside inputs */
+        box-sizing: border-box; /* Include padding in width */
+    }
+
+    .form-row input[type="range"] {
+        width: 100%; /* Full width sliders */
+    }
+
+    .form-row small {
+        display: block; /* Make small text block elements */
+        color: #888; /* Gray color for helper text */
+        margin-top: 2px; /* Small space above helper text */
+    }
+
+    .form-row span {
+        display: block; /* Make span elements block for alignment */
+        text-align: right; /* Align text to the right */
+        font-weight: bold; /* Bold text for emphasis */
+    }
+</style>

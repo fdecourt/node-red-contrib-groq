@@ -1,0 +1,23 @@
+{
+  "name": "@fdecourt/node-red-contrib-groq",
+  "version": "0.0.1",
+  "description": "A Node-RED node to connect to the GROQ API",
+  "main": "groq.js",
+  "keywords": [
+    "node-red",
+    "groq",
+    "api",
+    "plugin"
+  ],
+  "node-red": {
+    "nodes": {
+      "groq-config": "groq-config.js",
+      "groq": "groq.js"
+    }
+  },
+  "dependencies": {
+    "groq-sdk": "latest"
+  },
+  "author": "fdecourt",
+  "license": "MIT"
+}
