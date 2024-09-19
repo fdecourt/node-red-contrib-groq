@@ -18,6 +18,10 @@
   "dependencies": {
     "groq-sdk": "latest"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fdecourt/node-red-contrib-groq.git"
+  },
   "author": "fdecourt",
   "license": "MIT"
 }
