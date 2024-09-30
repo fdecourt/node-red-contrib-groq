@@ -1,115 +1,184 @@
 module.exports = function(RED) {
-    const GROQ = require('groq-sdk'); // Ensure the correct package name is used
+    const GROQ = require('groq-sdk');
 
-    // Define the GROQ node
-    function GroqNode(config) {
-        // Initialize the node with the provided configuration
-        RED.nodes.createNode(this, config);
-        const node = this;
+    const DEFAULT_MODEL = 'llama3-8b-8192';
+    const DEFAULT_TEMPERATURE = 1;
+    const DEFAULT_MAX_TOKEN = 100;
+    const DEFAULT_SYSTEM = '';
+    const DEFAULT_USER = '';
 
-        // Retrieve the GROQ configuration node
-        const configNode = RED.nodes.getNode(config.groqConfig);
-        if (!configNode) {
-            node.error("GROQ Configuration not found"); // Log an error if the configuration node is missing
-            return; // Exit the node if configuration is not found
+    class GroqNode {
+        constructor(config) {
+            RED.nodes.createNode(this, config);
+            this.config = config;
+            this.groqApiKey = null;
+            this.client = null;
+            this.initialized = false;
+
+            // Initialize the node
+            this.initialize();
+
+            // Register input event
+            this.on('input', this.onInput.bind(this));
         }
 
-        // Extract the API Key from the configuration node's credentials
-        const groqApiKey = configNode.credentials.apiKey;
+        initialize() {
+            // Retrieve the GROQ configuration node
+            const configNode = RED.nodes.getNode(this.config.groqConfig);
+            if (!configNode) {
+                this.error("GROQ Configuration not found");
+                return;
+            }
 
-        // Retrieve additional parameters from the node's configuration with default values
-        const defaultModel = config.model || 'llama3-8b-8192'; // Default model if not specified
-        const defaultTemperature = parseFloat(config.temperature) || 1; // Default temperature, parsed as a float
-        const defaultMaxToken = parseInt(config.max_token, 10) || 100; // Default max tokens, parsed as an integer
-        const defaultSystem = config.system || ''; // Default system role, empty string if not specified
-        const defaultUser = config.user || ''; // Default user message, empty string if not specified
+            // Extract the API Key from the configuration node's credentials
+            this.groqApiKey = configNode.credentials.apiKey;
 
-        // Initialize the GROQ client with the API Key
-        let client;
+            // Initialize the GROQ client with the API Key
+            try {
+                this.client = new GROQ({
+                    apiKey: this.groqApiKey,
+                    // Add other configurations if necessary
+                });
+                this.initialized = true;
+            } catch (error) {
+                this.error(`Error initializing GROQ client: ${error.message}`);
+            }
+        }
+
+        async onInput(msg, send, done) {
+            if (!this.initialized) {
+                this.error('GROQ client not initialized');
+                done(new Error('GROQ client not initialized'));
+                return;
+            }
+
+            try {
+                const params = this.getParams(msg);
+                const messages = this.buildMessages(params, msg);
+
+                this.status({ fill: 'blue', shape: 'dot', text: 'Requesting' });
+
+                this.debug(`Sending GROQ request with the following parameters:
+                    Model: ${params.model}
+                    Temperature: ${params.temperature}
+                    Max Token: ${params.max_token}
+                    System Role: ${params.system}
+                    User Message: ${messages.map(m => m.content).join('\n')}`);
+
+                const chatCompletion = await this.client.chat.completions.create({
+                    messages: messages,
+                    model: params.model,
+                    temperature: params.temperature,
+                    max_tokens: params.max_token,
+                });
+
+                const response = chatCompletion.choices[0].message.content;
+
+                this.debug(`Response received from GROQ: ${response}`);
+
+                msg.payload = response;
+
+                send(msg);
+                done();
+
+                this.status({});
+            } catch (error) {
+                this.status({ fill: 'red', shape: 'ring', text: 'Error' });
+
+                this.error(`Error connecting to GROQ: ${error.message}`, msg);
+                done(error);
+            }
+        }
+
+        getParams(msg) {
+            const model = msg.model || this.config.model || DEFAULT_MODEL;
+            const temperature = msg.temperature !== undefined ? parseFloat(msg.temperature) : parseFloat(this.config.temperature) || DEFAULT_TEMPERATURE;
+            const max_token = msg.max_token !== undefined ? parseInt(msg.max_token, 10) : parseInt(this.config.max_token, 10) || DEFAULT_MAX_TOKEN;
+            const system = msg.system || this.config.system || DEFAULT_SYSTEM;
+            const user = msg.user || this.config.user || DEFAULT_USER;
+
+            if (isNaN(temperature) || temperature < 0.01 || temperature > 2) {
+                throw new Error('Temperature must be a number between 0.01 and 2');
+            }
+
+            if (isNaN(max_token) || max_token < 1) {
+                throw new Error('Max Token must be a positive integer');
+            }
+
+            return { model, temperature, max_token, system, user };
+        }
+
+        buildMessages(params, msg) {
+            const messages = [];
+            if (params.system) {
+                messages.push({ role: 'system', content: params.system });
+            }
+            if (params.user) {
+                messages.push({ role: 'user', content: params.user });
+            } else if (msg.payload) {
+                messages.push({ role: 'user', content: msg.payload });
+            } else {
+                throw new Error('No user message provided');
+            }
+            return messages;
+        }
+    }
+
+    RED.nodes.registerType("groq", GroqNode, {
+        defaults: {
+            name: { value: "" },
+            groqConfig: { type: "groq-config", required: true },
+            model: { value: DEFAULT_MODEL },
+            temperature: { value: DEFAULT_TEMPERATURE },
+            max_token: { value: DEFAULT_MAX_TOKEN },
+            system: { value: DEFAULT_SYSTEM },
+            user: { value: DEFAULT_USER }
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "file.png",
+        label: function() {
+            return this.name || "groq";
+        }
+    });
+
+    RED.httpAdmin.get('/groq/models', RED.auth.needsPermission('groq.read'), async function(req, res) {
         try {
-            client = new GROQ({
+            const groqConfigId = req.query.groqConfig;
+            if (!groqConfigId) {
+                res.status(400).send("groqConfig parameter is missing");
+                return;
+            }
+    
+            // Retrieve the GROQ configuration node
+            const configNode = RED.nodes.getNode(groqConfigId);
+            if (!configNode) {
+                res.status(400).send("Invalid groqConfig parameter");
+                return;
+            }
+    
+            // Extract the API Key from the configuration node's credentials
+            const groqApiKey = configNode.credentials.apiKey;
+    
+            // Initialize the GROQ client with the API Key
+            const client = new GROQ({
                 apiKey: groqApiKey,
                 // Add other configurations if necessary
             });
-        } catch (initError) {
-            node.error(`Error initializing GROQ client: ${initError.message}`); // Log initialization errors
-            return; // Exit the node if client initialization fails
-        }
-
-        // Handle incoming messages to the node
-        node.on('input', async function(msg, send, done) {
-            try {
-                // Override default values with those from the incoming message, if provided
-                const model = msg.model || defaultModel; // Use msg.model if available, else defaultModel
-                const temperature = msg.temperature !== undefined ? parseFloat(msg.temperature) : defaultTemperature; // Parse temperature from msg or use default
-                const max_token = msg.max_token !== undefined ? parseInt(msg.max_token, 10) : defaultMaxToken; // Parse max_token from msg or use default
-                const system = msg.system || defaultSystem; // Use msg.system if available, else defaultSystem
-                const user = msg.user || defaultUser; // Use msg.user if available, else defaultUser
-
-                // Log the parameters being sent to GROQ for debugging purposes
-                node.log(`Sending GROQ request with the following parameters:
-                    Model: ${model}
-                    Temperature: ${temperature}
-                    Max Token: ${max_token}
-                    System Role: ${system}
-                    User Message: ${user}`);
-
-                // Build the array of messages to send to the GROQ API
-                const messages = [];
-                if (system) {
-                    messages.push({ role: 'system', content: system }); // Add system role message if provided
-                }
-                if (user) {
-                    messages.push({ role: 'user', content: user }); // Add user message if provided
-                } else {
-                    // If no specific user message is provided, use the query from the payload
-                    messages.push({ role: 'user', content: query }); // NOTE: 'query' is not defined in this scope
-                }
-
-                // Send the request to the GROQ API and await the response
-                const chatCompletion = await client.chat.completions.create({
-                    messages: messages, // Array of messages constructed above
-                    model: model, // Model to use
-                    temperature: temperature, // Temperature setting
-                    max_tokens: max_token, // Maximum number of tokens
-                });
-
-                // Extract the response content from the API's response
-                const response = chatCompletion.choices[0].message.content;
-
-                // Log the received response for debugging purposes
-                node.log(`Response received from GROQ: ${response}`);
-
-                // Assign the response to msg.payload to pass it to the next node in the flow
-                msg.payload = response;
-
-                // Send the message onward in the Node-RED flow
-                send(msg); // Forward the message to the next connected node
-                done(); // Signal that processing is complete
-            } catch (error) {
-                // In case of an error, log it and signal completion with the error
-                node.error(`Error connecting to GROQ: ${error.message}`, msg); // Log the error with the message context
-                done(error); // Signal to Node-RED that an error has occurred
-            }
-        });
-    }
-
-    // Register the GROQ node with Node-RED
-    RED.nodes.registerType("groq", GroqNode, {
-        defaults: {
-            name: { value: "" }, // Default value for the node's name
-            groqConfig: { type: "groq-config", required: true }, // Reference to the GROQ configuration node, marked as required
-            model: { value: "llama3-8b-8192" }, // Default model value
-            temperature: { value: 1 }, // Default temperature value
-            max_token: { value: 100 }, // Default max_token value
-            system: { value: "" }, // Default system role (empty)
-            user: { value: "" } // Default user message (empty)
-        },
-        inputs: 1, // Number of input connections the node accepts
-        outputs: 1, // Number of output connections the node provides
-        icon: "file.png", // Icon displayed for the node in the palette
-        label: function() {
-            return this.name || "groq"; // Label displayed on the node, defaults to "groq" if no name is set
+    
+            // Fetch the models from the GROQ API
+            const modelsResponse = await client.models.list();
+    
+            // Extract the necessary data (id and owned_by) from modelsResponse.data
+            const models = modelsResponse.data.map(model => ({
+                id: model.id,
+                owned_by: model.owned_by
+            }));
+    
+            res.json(models);
+        } catch (error) {
+            console.error(`Error fetching models: ${error.message}`, error);
+            res.status(500).send(`Error fetching models: ${error.message}`);
         }
     });
-}
+};

@@ -1,93 +1,396 @@
 <!-- GROQ Node Configuration Template -->
 <script type="text/html" data-template-name="groq">
-    <!-- Form Row for Node Name -->
+    <!-- Node Name -->
     <div class="form-row">
-        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
-        <input type="text" id="node-input-name" placeholder="Node Name">
+        <label for="node-input-name">
+            <i class="fa fa-tag"></i> Name
+        </label>
+        <input type="text" id="node-input-name" name="name" placeholder="Node Name">
     </div>
-    
-    <!-- Form Row for GROQ Configuration Selection -->
+
+    <!-- GROQ Configuration -->
     <div class="form-row">
-        <label for="node-input-groqConfig"><i class="fa fa-cog"></i> GROQ Configuration</label>
-        <input type="text" id="node-input-groqConfig" placeholder="Select GROQ Configuration" />
+        <label for="node-input-groqConfig">
+            <i class="fa fa-cog"></i> GROQ Configuration
+        </label>
+        <input type="node-config-input" id="node-input-groqConfig" name="groqConfig" type="groq-config">
     </div>
-    
-    <!-- Form Row for Model Selection -->
-    <div class="form-row">
-        <label for="node-input-model"><i class="fa fa-robot"></i> Model</label>
-        <input type="text" id="node-input-model" placeholder="Ex: llama3-70b-8192, llama3-8b-8192">
-        <small>Possible values: llama3-70b-8192, llama3-8b-8192, ...</small>
+
+    <!-- Model Selection (Searchable Select) -->
+    <div class="form-row" style="position: relative;">
+        <label for="model-search">
+            <i class="fa fa-robot"></i> Model
+        </label>
+        <input type="text" id="model-search" placeholder="Start typing to search models">
+        <!-- Hidden input to store the selected model ID -->
+        <input type="hidden" id="node-input-model" name="model">
+        <!-- Dropdown menu for model suggestions -->
+        <div id="model-dropdown" class="dropdown-menu" style="display: none;"></div>
     </div>
-    
-    <!-- Form Row for Temperature Slider -->
+
+    <!-- Temperature -->
     <div class="form-row">
-        <label for="node-input-temperature"><i class="fa fa-sliders-h"></i> Temperature</label>
-        <input type="range" id="node-input-temperature" min="0.01" max="2" step="0.01" value="1">
-        <span id="node-input-temperature-value">1</span>
+        <label for="node-input-temperature">
+            <i class="fa fa-thermometer-half"></i> Temperature
+        </label>
+        <input type="number" id="node-input-temperature" name="temperature" min="0.01" max="2" step="0.01" placeholder="Temperature (0.01 - 2.0)">
     </div>
-    
-    <!-- Form Row for Max Token Slider -->
+
+    <!-- Max Tokens -->
     <div class="form-row">
-        <label for="node-input-max_token"><i class="fa fa-sliders-h"></i> Max Token</label>
-        <input type="range" id="node-input-max_token" placeholder="Max Token" min="1" max="8192" step="1" value="1024">
-        <span id="node-input-max_token-value">1</span>
+        <label for="node-input-max_token">
+            <i class="fa fa-calculator"></i> Max Tokens
+        </label>
+        <input type="number" id="node-input-max_token" name="max_token" min="1" max="8192" step="1" placeholder="Max Tokens (1 - 8192)">
     </div>
-    
-    <!-- Form Row for System Role -->
+
+    <!-- System Role -->
     <div class="form-row">
-        <label for="node-input-system"><i class="fa fa-user-shield"></i> System Role</label>
-        <input type="text" id="node-input-system" placeholder="Define the system role">
+        <label for="node-input-system">
+            <i class="fa fa-user-shield"></i> System Role
+        </label>
+        <input type="text" id="node-input-system" name="system" placeholder="Define the system role">
     </div>
-    
-    <!-- Form Row for User Message -->
+
+    <!-- User Message -->
     <div class="form-row">
-        <label for="node-input-user"><i class="fa fa-user"></i> User Message</label>
-        <input type="text" id="node-input-user" placeholder="Write your message">
+        <label for="node-input-user">
+            <i class="fa fa-user"></i> User Message
+        </label>
+        <input type="text" id="node-input-user" name="user" placeholder="Write your message">
     </div>
 </script>
 
+<!-- The first <p> is used as the pop-up tooltip when hovering over the palette -->
+    <script type="text/x-red" data-help-name="groq">
+        <p>The GROQ node allows you to interact with GROQ AI models within your Node-RED flows.</p>
+    
+        <h3>GROQ Node</h3>
+        <p>
+            The GROQ node enables you to integrate GROQ AI models into your Node-RED workflows. It allows you to send prompts to AI models and receive generated responses, facilitating tasks such as content generation, language translation, and more.
+        </p>
+    
+        <h4>Configuration Options</h4>
+        <ul>
+            <li>
+                <strong>Name</strong>: An optional field where you can assign a custom name to the node for easier identification within your flow.
+            </li>
+            <li>
+                <strong>GROQ Configuration</strong>: Select or create a GROQ Configuration node that contains your API credentials. This is required to authenticate requests to the GROQ API.
+            </li>
+            <li>
+                <strong>Model</strong>: Choose the AI model you wish to use. Models are grouped by their owning organization (e.g., Meta, Google, Groq). Start typing in the input field to search for a model, and select it from the dropdown list.
+            </li>
+            <li>
+                <strong>Temperature</strong>: A numeric value between <code>0.01</code> and <code>2.0</code> that controls the randomness of the AI's output.
+                <ul>
+                    <li>
+                        <code>Lower values</code> make the output more focused and deterministic, suitable for tasks requiring precise answers.
+                    </li>
+                    <li>
+                        <code>Higher values</code> introduce more randomness, leading to more creative or diverse responses.
+                    </li>
+                    <li>
+                        The default value is <code>1</code>, offering a balance between determinism and creativity.
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <strong>Max Tokens</strong>: An integer value between <code>1</code> and <code>8192</code> that specifies the maximum length of the AI's response in tokens.
+                <ul>
+                    <li>
+                        A <code>token</code> roughly corresponds to a word or a piece of a word.
+                    </li>
+                    <li>
+                        Setting a higher value allows the AI to generate longer responses, but may increase processing time and cost.
+                    </li>
+                    <li>
+                        A lower value restricts the response length, which can be useful for concise answers.
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <strong>System Role</strong>: An optional field to define the AI assistant's role or behavior. Providing context here can guide the AI's responses. For example:
+                <ul>
+                    <li><code>You are a helpful assistant that provides detailed explanations about Node-RED.</code></li>
+                </ul>
+            </li>
+            <li>
+                <strong>User Message</strong>: The prompt or question you want to send to the AI. You can enter it directly here or pass it dynamically through <code>msg.payload</code>.
+            </li>
+        </ul>
+    
+        <h4>Usage Instructions</h4>
+        <p>
+            To use the GROQ node effectively:
+        </p>
+        <ol>
+            <li>
+                <strong>Configure the Node</strong>: Double-click the node to open its configuration dialog. Fill in the required fields, selecting the desired model and adjusting the temperature and max tokens as needed.
+            </li>
+            <li>
+                <strong>Set the System Role (Optional)</strong>: Provide context or instructions to the AI by defining the system role. This helps the AI understand how to respond.
+            </li>
+            <li>
+                <strong>Provide the User Message</strong>: Enter the message you want the AI to respond to. Alternatively, you can pass the message into the node via <code>msg.payload</code> from previous nodes in your flow.
+            </li>
+            <li>
+                <strong>Connect Nodes</strong>: Link the GROQ node to other nodes in your flow. The AI's response will be available in <code>msg.payload</code> for further processing.
+            </li>
+        </ol>
+    
+        <h4>Understanding Temperature and Max Tokens</h4>
+        <p>
+            These two parameters significantly influence the AI's output:
+        </p>
+        <h5>Temperature</h5>
+        <p>
+            The temperature setting controls the randomness of the AI's responses:
+        </p>
+        <ul>
+            <li>
+                <strong>Low Temperature (Closer to 0.01):</strong>
+                <ul>
+                    <li>Produces more predictable and focused responses.</li>
+                    <li>Ideal for tasks requiring precise and accurate information.</li>
+                </ul>
+            </li>
+            <li>
+                <strong>High Temperature (Closer to 2.0):</strong>
+                <ul>
+                    <li>Generates more creative and varied responses.</li>
+                    <li>Useful for brainstorming, creative writing, or when diverse ideas are desired.</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Default Temperature (1):</strong>
+                <ul>
+                    <li>Balances determinism and creativity.</li>
+                    <li>Suitable for general-purpose use cases.</li>
+                </ul>
+            </li>
+        </ul>
+    
+        <h5>Max Tokens</h5>
+        <p>
+            Max tokens determine the maximum length of the AI's response:
+        </p>
+        <ul>
+            <li>
+                <strong>Higher Max Tokens:</strong>
+                <ul>
+                    <li>Allows for longer, more detailed responses.</li>
+                    <li>Can be useful when comprehensive answers are needed.</li>
+                    <li>May increase processing time and resource usage.</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Lower Max Tokens:</strong>
+                <ul>
+                    <li>Restricts the length of the response to be shorter and more concise.</li>
+                    <li>Useful for quick answers or when brevity is required.</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Considerations:</strong>
+                <ul>
+                    <li>The actual response length may be shorter than the max tokens if the AI completes its response naturally.</li>
+                    <li>Setting max tokens too low may cause the AI to truncate important information.</li>
+                </ul>
+            </li>
+        </ul>
+    
+        <h4>Example Use Case</h4>
+        <p>
+            Suppose you want the AI to generate a detailed explanation about how Node-RED works:
+        </p>
+        <ol>
+            <li>
+                <strong>Select a Model:</strong> Choose a suitable AI model from the list, such as <code>llama3-8b-8192</code>.
+            </li>
+            <li>
+                <strong>Set the Temperature:</strong> Use a value around <code>0.7</code> to get a detailed yet coherent response.
+            </li>
+            <li>
+                <strong>Set Max Tokens:</strong> Choose a higher value, like <code>500</code>, to allow for a comprehensive explanation.
+            </li>
+            <li>
+                <strong>Define the System Role (Optional):</strong> For example, <code>You are an expert in Node-RED, providing clear and detailed explanations.</code>
+            </li>
+            <li>
+                <strong>Enter the User Message:</strong> <code>Explain how Node-RED can be used to automate IoT devices.</code>
+            </li>
+            <li>
+                <strong>Deploy and Test:</strong> Deploy your flow and inject a message to trigger the node. The AI's response will be available in <code>msg.payload</code>.
+            </li>
+        </ol>
+    
+        <h4>Tips</h4>
+        <ul>
+            <li>
+                Experiment with different temperature and max tokens settings to achieve the desired output.
+            </li>
+            <li>
+                Use the system role to steer the AI's responses toward a particular style or domain expertise.
+            </li>
+            <li>
+                Ensure your GROQ API credentials are correctly configured to avoid authentication errors.
+            </li>
+        </ul>
+    
+        <h4>Troubleshooting</h4>
+        <ul>
+            <li>
+                <strong>Error Loading Models:</strong> If models fail to load, check your GROQ Configuration and ensure your API key is valid.
+            </li>
+            <li>
+                <strong>No Response from AI:</strong> Verify that the user message is provided and that the node is properly connected in your flow.
+            </li>
+            <li>
+                <strong>Unexpected Responses:</strong> Adjust the temperature and system role to refine the AI's output.
+            </li>
+        </ul>
+    
+        <h4>Support</h4>
+        <p>
+            For further assistance, refer to the GROQ API documentation or reach out to the Node-RED community.
+        </p>
+    </script>
+
+    
 <!-- GROQ Node Registration and Configuration -->
 <script type="text/javascript">
     RED.nodes.registerType('groq', {
-        category: 'function', // Places the node under the 'function' category in the palette
-        color: '#a6bbcf', // Sets the node color in the palette
+        category: 'function',
+        color: '#a6bbcf',
         defaults: {
-            name: { value: "" }, // Default value for the node's name
-            groqConfig: { type: "groq-config", required: true }, // Reference to the GROQ configuration node, marked as required
-            model: { value: "llama3-8b-8192" }, // Default model value
-            temperature: { value: 1 }, // Default temperature value
-            max_token: { value: 1024 }, // Default max_token value
-            system: { value: "" }, // Default system role (empty)
-            user: { value: "" } // Default user message (empty)
+            name: { value: "" },
+            groqConfig: { type: "groq-config", required: true },
+            model: { value: "", required: true },
+            temperature: { value: 1, validate: function(v) {
+                var value = parseFloat(v);
+                return !isNaN(value) && value >= 0.01 && value <= 2;
+            }},
+            max_token: { value: 1024, validate: function(v) {
+                var value = parseInt(v, 10);
+                return !isNaN(value) && value >= 1 && value <= 8192;
+            }},
+            system: { value: "" },
+            user: { value: "" }
         },
-
-        inputs: 1, // Number of inputs the node accepts
-        outputs: 1, // Number of outputs the node provides
-        icon: "file.png", // Icon displayed for the node in the palette
+        inputs: 1,
+        outputs: 1,
+        icon: "file.png",
         label: function() {
-            return this.name || "groq"; // Label displayed on the node, defaults to "groq" if no name is set
+            return this.name || "groq";
         },
         oneditprepare: function() {
-            // Function called when the node's edit dialog is prepared
-            
-            // Handle Temperature Slider
-            var temperatureSlider = $("#node-input-temperature"); // Select the temperature slider element
-            var temperatureValue = $("#node-input-temperature-value"); // Select the span displaying the temperature value
-            temperatureValue.text(temperatureSlider.val()); // Initialize the displayed temperature value
-            
-            // Update the displayed temperature value when the slider is moved
-            temperatureSlider.on("input", function() {
-                temperatureValue.text($(this).val());
+            var node = this;
+    
+            function loadModels() {
+                var groqConfigId = $("#node-input-groqConfig").val();
+    
+                if (!groqConfigId) {
+                    $("#model-search").attr('placeholder', 'Please select GROQ Configuration');
+                    return;
+                }
+    
+                $("#model-search").attr('placeholder', 'Loading models...');
+    
+                $.ajax({
+                    url: 'groq/models',
+                    type: 'GET',
+                    data: { groqConfig: groqConfigId },
+                    success: function(models) {
+                        // Build data structures for the dropdown
+                        var allModels = models; // models is an array of { id, owned_by }
+                        // Group models by 'owned_by'
+                        var groupedModels = {};
+                        allModels.forEach(function(model) {
+                            var owner = model.owned_by || 'Other';
+                            if (!groupedModels[owner]) {
+                                groupedModels[owner] = [];
+                            }
+                            groupedModels[owner].push(model);
+                        });
+                        // Store models data for use in filtering
+                        $("#model-search").data('groupedModels', groupedModels);
+                        $("#model-search").data('allModels', allModels);
+    
+                        // Reset placeholder
+                        $("#model-search").attr('placeholder', 'Select a models');
+    
+                        // Restore the previously selected model
+                        if (node.model) {
+                            $("#model-search").val(node.model);
+                            $("#node-input-model").val(node.model);
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        $("#model-search").attr('placeholder', 'Error loading models');
+                        console.error('Error fetching models:', errorThrown);
+                    }
+                });
+            }
+    
+            // Load models when the dialog is opened
+            loadModels();
+    
+            // Reload models when the GROQ configuration changes
+            $("#node-input-groqConfig").on('change', function() {
+                loadModels();
             });
-            
-            // Handle Max Token Slider
-            var maxTokenSlider = $("#node-input-max_token"); // Select the max_token slider element
-            var maxTokenValue = $("#node-input-max_token-value"); // Attempt to select the span displaying the max_token value
-            maxTokenValue.text(maxTokenSlider.val()); // Initialize the displayed max_token value
-            
-            // Update the displayed max_token value when the slider is moved
-            maxTokenSlider.on("input", function() {
-                maxTokenValue.text($(this).val());
+    
+            // Implement the searchable dropdown
+            $("#model-search").on('input focus', function() {
+                var searchTerm = $(this).val().toLowerCase();
+                var groupedModels = $(this).data('groupedModels');
+                if (!groupedModels) {
+                    return;
+                }
+    
+                var dropdown = $("#model-dropdown");
+                dropdown.empty();
+    
+                // Filter and display models
+                var hasResults = false;
+                Object.keys(groupedModels).sort().forEach(function(owner) {
+                    var models = groupedModels[owner].filter(function(model) {
+                        return model.id.toLowerCase().includes(searchTerm);
+                    });
+                    if (models.length > 0) {
+                        hasResults = true;
+                        // Create owner header
+                        var ownerHeader = $('<div class="dropdown-header"></div>').text(owner);
+                        dropdown.append(ownerHeader);
+                        // Add models
+                        models.forEach(function(model) {
+                            var item = $('<div class="dropdown-item"></div>').text(model.id).attr('data-model-id', model.id);
+                            dropdown.append(item);
+                        });
+                    }
+                });
+    
+                if (hasResults) {
+                    dropdown.show();
+                } else {
+                    dropdown.hide();
+                }
+            });
+    
+            // Hide dropdown when clicking outside
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('#model-search, #model-dropdown').length) {
+                    $("#model-dropdown").hide();
+                }
+            });
+    
+            // Handle selection of a model
+            $("#model-dropdown").on('click', '.dropdown-item', function() {
+                var modelId = $(this).attr('data-model-id');
+                $("#model-search").val(modelId);
+                $("#node-input-model").val(modelId);
+                $("#model-dropdown").hide();
             });
         }
     });
@@ -95,42 +398,57 @@
 
 <!-- Styles for the GROQ Node Configuration Dialog -->
 <style>
-    /* Styles for each form row to provide spacing */
-    .form-row {
-        margin-bottom: 10px;
-    }
+/* Styles for the form rows */
+.form-row label {
+    width: 30%;
+    float: left;
+    margin-right: 10px;
+    line-height: 30px;
+}
 
-    /* Styles for labels within form rows */
-    .form-row label {
-        display: block; /* Makes the label a block element */
-        margin-bottom: 5px; /* Adds space below the label */
-    }
+.form-row input,
+.form-row select {
+    width: 65%;
+}
 
-    /* Styles for text, number, and password input fields */
-    .form-row input[type="text"],
-    .form-row input[type="number"],
-    .form-row input[type="password"] {
-        width: 100%; /* Makes the input field take up the full width */
-        padding: 5px; /* Adds padding inside the input field */
-        box-sizing: border-box; /* Ensures padding is included in the element's total width */
-    }
+.form-row:after {
+    content: "";
+    display: table;
+    clear: both;
+}
 
-    /* Styles for range (slider) input fields */
-    .form-row input[type="range"] {
-        width: 100%; /* Makes the slider take up the full width */
-    }
+/* Style for the model search input */
+.form-row #model-search {
+    width: 65%;
+}
 
-    /* Styles for small helper text */
-    .form-row small {
-        display: block; /* Makes the small text a block element */
-        color: #888; /* Sets the text color to a light gray */
-        margin-top: 2px; /* Adds a small margin above the helper text */
-    }
+/* Styles for the dropdown menu */
+#model-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 30%; /* Adjust based on label width */
+    width: 65%; /* Match the width of the input field */
+    background-color: white;
+    border: 1px solid #ccc;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
+}
 
-    /* Styles for span elements used to display slider values */
-    .form-row span {
-        display: block; /* Makes the span a block element */
-        text-align: right; /* Aligns the text to the right */
-        font-weight: bold; /* Makes the text bold */
-    }
+#model-dropdown .dropdown-header {
+    padding: 5px 10px;
+    font-weight: bold;
+    color: blue;
+}
+
+#model-dropdown .dropdown-item {
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+#model-dropdown .dropdown-item:hover {
+    background-color: #f0f0f0;
+}
+
 </style>
